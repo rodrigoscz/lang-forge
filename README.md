@@ -17,7 +17,24 @@ This lab explores how content structure, semantic HTML, and linguistic patterns 
 
 ## Structure
 
+- `frontend/` — Astro static site for experiment writeups and variant pages.
+- `backend/` — FastAPI service, SQLite schema, and experiment lifecycle CLI.
+- `experiments/` — numbered, folder-based experiment specs, scripts, and data.
+- `data/` — local SQLite databases and raw shared data exports.
+- `outputs/` — generated diagrams, charts, and social cards.
 
+## Backend Quick Start
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+
+The API exposes `GET /health` and initializes the SQLite schema from `backend/app/db/schema.sql` on startup.
+Use `requirements.lock.txt` for reproducible installs and `python -m pip_audit -r requirements.txt` for dependency auditing.
 
 ## First Experiment
 
@@ -28,4 +45,3 @@ Testing how semantic HTML and heading hierarchy affect citation rates in AI Over
 ## License
 
 MIT
-
