@@ -34,7 +34,7 @@ uvicorn main:app --reload
 ```
 
 The API exposes `GET /health` and initializes the SQLite schema from `backend/app/db/schema.sql` on startup.
-Use `requirements.lock.txt` for reproducible installs and `python -m pip_audit -r requirements.txt` for dependency auditing.
+Dependencies are pinned in `requirements.txt`; audit them with `python -m pip_audit -r requirements.txt`.
 
 ## First Experiment
 

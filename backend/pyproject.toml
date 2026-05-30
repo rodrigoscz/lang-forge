@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lang-forge-backend"
+version = "0.1.0"
+description = "FastAPI backend and experiment runner for the AI SEO Lab."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.136.3",
+  "uvicorn[standard]==0.34.0",
+  "httpx==0.28.1",
+  "jinja2==3.1.6",
+  "matplotlib==3.10.0",
+  "seaborn==0.13.2",
+  "pydantic==2.10.4",
+]
+
+[project.optional-dependencies]
+security = ["pip-audit==2.8.0"]
+
+[tool.setuptools]
+packages = ["app", "app.db", "app.experiments"]
+
+[tool.pip-audit]
+requirement = ["requirements.txt"]
