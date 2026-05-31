@@ -85,7 +85,7 @@ def create_experiment_card(
     Returns:
         Path to generated card
     """
-    html = f"""
+    html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -141,4 +141,4 @@ def create_experiment_card(
     </body>
     </html>
     """
-    return create_social_card(html, output_path)
+    return create_social_card(html_content, output_path)

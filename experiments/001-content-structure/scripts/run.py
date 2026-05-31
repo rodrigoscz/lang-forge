@@ -119,8 +119,8 @@ async def collect_ai_overview_data(client: DataforSEOClient) -> list[dict]:
                 "citations": _extract_citations(response),
                 "raw_response": response,
             })
-        except Exception as e:
-            print(f"Error querying '{query}': {e}")
+        except DataforSEOAPIError as e:
+            print(f"API error querying '{query}': {e}")
             results.append({
                 "query": query,
                 "citations": [],
@@ -220,22 +220,24 @@ async def main() -> None:
         per_experiment_limit=config.per_experiment_limit,
     )
     client = DataforSEOClient(config, cache=cache, budget=budget)
+    try:
+        results = await collect_ai_overview_data(client)
+        print(f"\nCollected data for {len(results)} queries\n")
 
-    results = await collect_ai_overview_data(client)
-    print(f"\nCollected data for {len(results)} queries\n")
+        print("Step 3: Analyzing results...")
+        analysis = analyze_results(results)
+        print(f"Citation rate: {analysis['citation_rate']:.1%}")
+        print(f"Total citations: {analysis['total_citations']}")
+        print(f"Top domains: {analysis['top_domains'][:3]}\n")
 
-    print("Step 3: Analyzing results...")
-    analysis = analyze_results(results)
-    print(f"Citation rate: {analysis['citation_rate']:.1%}")
-    print(f"Total citations: {analysis['total_citations']}")
-    print(f"Top domains: {analysis['top_domains'][:3]}\n")
+        print("Step 4: Generating visualizations...")
+        generate_visualizations(analysis)
+        print()
 
-    print("Step 4: Generating visualizations...")
-    generate_visualizations(analysis)
-    print()
-
-    print("Step 5: Saving results...")
-    save_results(results, analysis)
+        print("Step 5: Saving results...")
+        save_results(results, analysis)
+    finally:
+        await client.close()
 
     print("\n=== Experiment complete ===")
     print(f"Results: {DATA_DIR}")

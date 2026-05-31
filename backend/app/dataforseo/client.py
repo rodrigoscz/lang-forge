@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import os
+from collections import OrderedDict
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Literal
@@ -88,7 +89,9 @@ class DataforSEOClient:
         self.budget = budget
         self.rate_limiter = rate_limiter or AsyncRateLimiter(config.rate_limit_rps)
         self._http_client = http_client
-        self._locks: dict[str, asyncio.Lock] = {}
+        self._locks: OrderedDict[str, asyncio.Lock] = OrderedDict()
+        self._max_locks = 1000
+        self._budget_locks: dict[str, asyncio.Lock] = {}
 
     async def close(self) -> None:
         if self._http_client is not None:
@@ -154,7 +157,13 @@ class DataforSEOClient:
     ) -> dict[str, Any]:
         key = f"{endpoint}:{json.dumps(params, sort_keys=True)}"
         if key not in self._locks:
+            if len(self._locks) >= self._max_locks:
+                for old_key in list(self._locks.keys()):
+                    if not self._locks[old_key].locked():
+                        del self._locks[old_key]
+                        break
             self._locks[key] = asyncio.Lock()
+        self._locks.move_to_end(key)
         async with self._locks[key]:
             if self.cache is not None and not force_fresh:
                 cached = await asyncio.to_thread(self.cache.get, endpoint, params)
@@ -164,12 +173,16 @@ class DataforSEOClient:
 
             estimated_cost_cents = self.config.default_cost_cents
             if self.budget is not None:
-                await asyncio.to_thread(self.budget.check, experiment_id, estimated_cost_cents)
+                exp_key = experiment_id or "global"
+                if exp_key not in self._budget_locks:
+                    self._budget_locks[exp_key] = asyncio.Lock()
+                async with self._budget_locks[exp_key]:
+                    await asyncio.to_thread(self.budget.check, experiment_id, estimated_cost_cents)
+                    raw = await self._post_with_retry(endpoint, [params])
+                    await asyncio.to_thread(self.budget.record, experiment_id, estimated_cost_cents)
+            else:
+                raw = await self._post_with_retry(endpoint, [params])
 
-            raw = await self._post_with_retry(endpoint, [params])
-
-            if self.budget is not None:
-                await asyncio.to_thread(self.budget.record, experiment_id, estimated_cost_cents)
             if self.cache is not None:
                 await asyncio.to_thread(self.cache.set, endpoint, params, raw, experiment_id=experiment_id)
             return raw
