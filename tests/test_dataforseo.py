@@ -319,7 +319,7 @@ def test_budget_exceeded_mid_batch_continues(tmp_path: Path) -> None:
     asyncio.run(run())
 
 
-def test_budget_lock_released_during_api_call(tmp_path: Path) -> None:
+def test_budget_lock_held_during_api_call(tmp_path: Path) -> None:
     async def run() -> None:
         database = temp_database(tmp_path)
         budget = QueryBudget(database, monthly_budget_cents=100, per_experiment_limit=50)
@@ -345,5 +345,70 @@ def test_budget_lock_released_during_api_call(tmp_path: Path) -> None:
 
         status = budget.status("001-test")
         assert status.query_count == 2
+
+    asyncio.run(run())
+
+
+def test_lock_eviction_via_execute_query(tmp_path: Path) -> None:
+    async def run() -> None:
+        database = temp_database(tmp_path)
+        responses = [httpx.Response(200, json=dataforseo_payload()) for _ in range(10)]
+        fake_http = FakeHTTPClient(responses)
+        client = DataforSEOClient(
+            config(),
+            cache=ApiCache(database),
+            budget=QueryBudget(database),
+            http_client=fake_http,  # type: ignore[arg-type],
+        )
+        client._max_locks = 5
+
+        tasks = [
+            client._execute_query(
+                endpoint="/serp/google/organic/live/advanced",
+                params={"keyword": f"query-{i}", "location_code": 2840, "language_code": "en", "device": "desktop"},
+                experiment_id="test-exp",
+                force_fresh=True,
+            )
+            for i in range(10)
+        ]
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        assert all(not isinstance(r, Exception) for r in results), f"Unexpected exceptions: {[r for r in results if isinstance(r, Exception)]}"
+        assert len(client._locks) <= client._max_locks
+
+    asyncio.run(run())
+
+
+def test_budget_enforcement_under_concurrent_load(tmp_path: Path) -> None:
+    async def run() -> None:
+        database = temp_database(tmp_path)
+        budget = QueryBudget(database, monthly_budget_cents=10, per_experiment_limit=3)
+        responses = [httpx.Response(200, json=dataforseo_payload()) for _ in range(10)]
+        fake_http = FakeHTTPClient(responses)
+        client = DataforSEOClient(
+            config(),
+            cache=ApiCache(database),
+            budget=budget,
+            http_client=fake_http,  # type: ignore[arg-type],
+        )
+
+        tasks = [
+            client._execute_query(
+                endpoint="/serp/google/organic/live/advanced",
+                params={"keyword": f"query-{i}", "location_code": 2840, "language_code": "en", "device": "desktop"},
+                experiment_id="test-exp",
+                force_fresh=True,
+            )
+            for i in range(6)
+        ]
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        successes = [r for r in results if not isinstance(r, Exception)]
+        failures = [r for r in results if isinstance(r, (BudgetExceededError, DataforSEOAPIError))]
+        assert len(successes) == 3
+        assert len(failures) == 3
+        assert budget.status("test-exp").query_count == 3
 
     asyncio.run(run())
