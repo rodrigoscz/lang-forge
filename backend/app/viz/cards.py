@@ -5,6 +5,7 @@ Always run sequentially, never in parallel. On low-RAM machines (<16GB),
 consider delegating to a more powerful device.
 """
 
+import html
 import os
 import sys
 from pathlib import Path
@@ -133,9 +134,9 @@ def create_experiment_card(
     </style>
     </head>
     <body>
-        <div class="badge">AI SEO Lab • {experiment_id}</div>
-        <h1>{title}</h1>
-        <div class="finding">{key_finding}</div>
+        <div class="badge">AI SEO Lab • {html.escape(experiment_id)}</div>
+        <h1>{html.escape(title)}</h1>
+        <div class="finding">{html.escape(key_finding)}</div>
         <div class="footer">lang-forge • todo es lenguaje</div>
     </body>
     </html>

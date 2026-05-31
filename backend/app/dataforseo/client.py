@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 from datetime import UTC, datetime
@@ -87,6 +88,7 @@ class DataforSEOClient:
         self.budget = budget
         self.rate_limiter = rate_limiter or AsyncRateLimiter(config.rate_limit_rps)
         self._http_client = http_client
+        self._locks: dict[str, asyncio.Lock] = {}
 
     async def close(self) -> None:
         if self._http_client is not None:
@@ -150,23 +152,27 @@ class DataforSEOClient:
         experiment_id: str,
         force_fresh: bool,
     ) -> dict[str, Any]:
-        if self.cache is not None and not force_fresh:
-            cached = await asyncio.to_thread(self.cache.get, endpoint, params)
-            if cached is not None:
-                cached["_from_cache"] = True
-                return cached
+        key = f"{endpoint}:{json.dumps(params, sort_keys=True)}"
+        if key not in self._locks:
+            self._locks[key] = asyncio.Lock()
+        async with self._locks[key]:
+            if self.cache is not None and not force_fresh:
+                cached = await asyncio.to_thread(self.cache.get, endpoint, params)
+                if cached is not None:
+                    cached["_from_cache"] = True
+                    return cached
 
-        estimated_cost_cents = self.config.default_cost_cents
-        if self.budget is not None:
-            await asyncio.to_thread(self.budget.check, experiment_id, estimated_cost_cents)
+            estimated_cost_cents = self.config.default_cost_cents
+            if self.budget is not None:
+                await asyncio.to_thread(self.budget.check, experiment_id, estimated_cost_cents)
 
-        raw = await self._post_with_retry(endpoint, [params])
+            raw = await self._post_with_retry(endpoint, [params])
 
-        if self.budget is not None:
-            await asyncio.to_thread(self.budget.record, experiment_id, estimated_cost_cents)
-        if self.cache is not None:
-            await asyncio.to_thread(self.cache.set, endpoint, params, raw, experiment_id=experiment_id)
-        return raw
+            if self.budget is not None:
+                await asyncio.to_thread(self.budget.record, experiment_id, estimated_cost_cents)
+            if self.cache is not None:
+                await asyncio.to_thread(self.cache.set, endpoint, params, raw, experiment_id=experiment_id)
+            return raw
 
     async def _post_with_retry(self, endpoint: str, payload: list[dict[str, Any]]) -> dict[str, Any]:
         backoffs = [1.0, 2.0, 4.0]
@@ -184,7 +190,7 @@ class DataforSEOClient:
                     raise httpx.HTTPStatusError("Transient DataforSEO server error", request=response.request, response=response)
                 response.raise_for_status()
                 return response.json()
-            except (httpx.TimeoutException, httpx.HTTPStatusError) as exc:
+            except httpx.HTTPError as exc:
                 last_error = exc
                 status_code = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
                 if status_code is not None and status_code < 500:
