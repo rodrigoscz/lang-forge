@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { experiments } from '../data/experiments';
+---
+
+<BaseLayout title="Experiments" description="AI SEO Lab experiment index.">
+  <section class="hero">
+    <p class="eyebrow">AI SEO Lab</p>
+    <h1>Controlled experiments for how AI systems read content.</h1>
+    <p class="muted">Each experiment publishes a hypothesis, generated variants, and eventually measured AI Overview citation results.</p>
+  </section>
+
+  <section style="margin-top: 32px;" aria-labelledby="experiments-heading">
+    <h2 id="experiments-heading">Experiments</h2>
+    <div class="grid">
+      {experiments.map((experiment) => (
+        <article class="card">
+          <span class="pill">{experiment.status}</span>
+          <h3><a href={`/experiments/${experiment.id}/`}>{experiment.title}</a></h3>
+          <p>{experiment.summary}</p>
+          <p class="muted">{experiment.queries.length * 4} variant pages · 4 structure treatments</p>
+        </article>
+      ))}
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,61 @@
+---
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { experiments, structureTypes, variantUrl } from '../../../data/experiments';
+import { renderMarkdown } from '../../../lib/markdown';
+
+export function getStaticPaths() {
+  return experiments.map((experiment) => ({ params: { id: experiment.id }, props: { experiment } }));
+}
+
+const { experiment } = Astro.props;
+
+async function readExperimentMarkdown(fileName: string, fallback: string): Promise<string> {
+  const url = new URL(`../../../../../experiments/${experiment.id}/${fileName}`, import.meta.url);
+  const path = fileURLToPath(url);
+  if (!existsSync(path)) {
+    return fallback;
+  }
+  return readFile(path, 'utf-8');
+}
+
+const specHtml = renderMarkdown(await readExperimentMarkdown('spec.md', '# Spec\n\nSpec file not found.'));
+const resultsHtml = renderMarkdown(await readExperimentMarkdown('results.md', '# Results\n\nResults have not been generated yet.'));
+---
+
+<BaseLayout title={experiment.title} description={experiment.summary}>
+  <section class="hero">
+    <p class="eyebrow">Experiment {experiment.id}</p>
+    <h1>{experiment.title}</h1>
+    <p class="muted">{experiment.hypothesis}</p>
+    <p><span class="pill">{experiment.status}</span> <span class="pill">{experiment.queries.length * structureTypes.length} static variants</span></p>
+  </section>
+
+  <section style="margin-top: 32px;" class="content-panel" aria-labelledby="variant-index-heading">
+    <h2 id="variant-index-heading">Variant index</h2>
+    <div class="grid">
+      {experiment.queries.map((query) => (
+        <article>
+          <h3>{query.title}</h3>
+          <ul>
+            {structureTypes.map((structureType) => (
+              <li><a href={variantUrl(experiment.id, query.slug, structureType)}>{structureType}</a></li>
+            ))}
+          </ul>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section style="margin-top: 32px;" class="content-panel" aria-labelledby="spec-heading">
+    <h2 id="spec-heading">Experiment spec</h2>
+    <div set:html={specHtml} />
+  </section>
+
+  <section style="margin-top: 32px;" class="content-panel" aria-labelledby="results-heading">
+    <h2 id="results-heading">Results</h2>
+    <div set:html={resultsHtml} />
+  </section>
+</BaseLayout>

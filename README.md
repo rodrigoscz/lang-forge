@@ -36,6 +36,17 @@ uvicorn main:app --reload
 The API exposes `GET /health` and initializes the SQLite schema from `backend/app/db/schema.sql` on startup.
 Dependencies are pinned in `requirements.txt`; audit them with `python -m pip_audit -r requirements.txt`.
 
+## Frontend Quick Start
+
+```bash
+cd frontend
+pnpm install
+pnpm build
+pnpm dev
+```
+
+The Astro site statically renders experiment pages, variant pages, and a sitemap for crawler discovery.
+
 ## First Experiment
 
 **Content Structure vs AI Overview Citations**

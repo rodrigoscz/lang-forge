@@ -1,0 +1,22 @@
+---
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { getVariantPaths } from '../../../../data/experiments';
+import { renderVariantHtml } from '../../../../lib/variantHtml';
+
+export function getStaticPaths() {
+  return getVariantPaths();
+}
+
+const { experiment, query, structureType } = Astro.props;
+const variantHtml = renderVariantHtml(experiment.id, query, structureType);
+---
+
+<BaseLayout title={`${query.title} — ${structureType}`} description={`${structureType} variant for ${query.title}.`}>
+  <section class="hero">
+    <p class="eyebrow">{experiment.id} · {structureType}</p>
+    <h1>{query.title}</h1>
+    <p class="muted">Predictable URL for crawler testing: /experiments/{experiment.id}/variants/{query.slug}/{structureType}</p>
+  </section>
+
+  <section style="margin-top: 32px;" aria-label="Generated content variant" set:html={variantHtml} />
+</BaseLayout>
