@@ -15,13 +15,17 @@ dependencies = [
   "matplotlib==3.10.0",
   "seaborn==0.13.2",
   "pydantic==2.10.4",
+  "pytest==9.0.3",
 ]
 
 [project.optional-dependencies]
 security = ["pip-audit==2.8.0"]
 
 [tool.setuptools]
-packages = ["app", "app.db", "app.experiments"]
+packages = ["app", "app.db", "app.experiments", "app.variants"]
+
+[tool.setuptools.package-data]
+"app.variants" = ["templates/*.html"]
 
 [tool.pip-audit]
 requirement = ["requirements.txt"]

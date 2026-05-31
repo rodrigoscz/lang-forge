@@ -1,0 +1,20 @@
+<div class="variant variant-plain" data-structure="plain" data-query="{{ query_slug }}">
+  <p>{{ title }}</p>
+  <p>{{ slots.heading }}</p>
+  <p>{{ slots.intro }}</p>
+  <p>Analysis</p>
+  <p>{{ slots.body }}</p>
+  <p>Key points</p>
+  <ul>
+    {% for point in slots.key_points %}<li>{{ point }}</li>{% endfor %}
+  </ul>
+  <p>Questions</p>
+  {% for item in slots.faq %}
+  <p>{{ item.question }}</p>
+  <p>{{ item.answer }}</p>
+  {% endfor %}
+  <p>Process</p>
+  <ol>
+    {% for step in slots.how_to_steps %}<li>{{ step }}</li>{% endfor %}
+  </ol>
+</div>
