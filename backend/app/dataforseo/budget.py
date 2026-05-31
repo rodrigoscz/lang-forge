@@ -55,7 +55,10 @@ class QueryBudget:
         return status
 
     def record(self, experiment_id: str, actual_cost_cents: int) -> BudgetStatus:
-        self.check(experiment_id, actual_cost_cents)
+        try:
+            self.check(experiment_id, actual_cost_cents)
+        except BudgetExceededError:
+            pass
         period_start, period_end = self._current_period()
         with self.database.connect() as connection:
             connection.execute(

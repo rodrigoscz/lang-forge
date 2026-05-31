@@ -174,7 +174,9 @@ class DataforSEOClient:
                             await self._locks[oldest_key].acquire()
                             self._locks.pop(oldest_key, None)
                     self._locks[key] = asyncio.Lock()
-        self._locks.move_to_end(key)
+                self._locks.move_to_end(key)
+        else:
+            self._locks.move_to_end(key)
         async with self._locks[key]:
             if self.cache is not None and not force_fresh:
                 cached = await asyncio.to_thread(self.cache.get, endpoint, params)
@@ -200,7 +202,9 @@ class DataforSEOClient:
                                     await self._budget_locks[oldest_key].acquire()
                                     self._budget_locks.pop(oldest_key, None)
                             self._budget_locks[exp_key] = asyncio.Lock()
-                self._budget_locks.move_to_end(exp_key)
+                        self._budget_locks.move_to_end(exp_key)
+                else:
+                    self._budget_locks.move_to_end(exp_key)
                 async with self._budget_locks[exp_key]:
                     await asyncio.to_thread(self.budget.check, experiment_id, estimated_cost_cents)
                     raw = await self._post_with_retry(endpoint, [params])
