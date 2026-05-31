@@ -209,3 +209,45 @@ def test_cache_invalidate(tmp_path: Path) -> None:
         assert data["deleted"] >= 1
 
     asyncio.run(run())
+
+
+def test_query_rejects_invalid_experiment_id(tmp_path: Path) -> None:
+    async def run() -> None:
+        app, _ = _fake_client(tmp_path)
+        transport = ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+            response = await http.post(
+                "/api/serp/query",
+                json={"experiment_id": "invalid", "keyword": "test"},
+            )
+        assert response.status_code == 422
+
+    asyncio.run(run())
+
+
+def test_query_rejects_invalid_device(tmp_path: Path) -> None:
+    async def run() -> None:
+        app, _ = _fake_client(tmp_path)
+        transport = ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+            response = await http.post(
+                "/api/serp/query",
+                json={"experiment_id": "001-test", "keyword": "test", "device": "tablet"},
+            )
+        assert response.status_code == 422
+
+    asyncio.run(run())
+
+
+def test_query_rejects_invalid_endpoint(tmp_path: Path) -> None:
+    async def run() -> None:
+        app, _ = _fake_client(tmp_path)
+        transport = ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+            response = await http.post(
+                "/api/serp/query",
+                json={"experiment_id": "001-test", "keyword": "test", "endpoint": "unknown"},
+            )
+        assert response.status_code == 422
+
+    asyncio.run(run())

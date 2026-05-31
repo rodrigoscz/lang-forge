@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import contextlib
 import os
 import sqlite3
+from collections.abc import Generator
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -14,12 +16,20 @@ class Database:
     def __init__(self, path: Path) -> None:
         self.path = path
 
-    def connect(self) -> sqlite3.Connection:
+    @contextlib.contextmanager
+    def connect(self) -> Generator[sqlite3.Connection, None, None]:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self.path, timeout=5.0)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
-        return connection
+        try:
+            yield connection
+            connection.commit()
+        except BaseException:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
 
     def initialize(self) -> None:
         schema_path = Path(__file__).with_name("schema.sql")
