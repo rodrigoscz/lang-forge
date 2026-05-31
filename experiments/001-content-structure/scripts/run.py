@@ -119,7 +119,7 @@ async def collect_ai_overview_data(client: DataforSEOClient) -> list[dict]:
                 "citations": _extract_citations(response),
                 "raw_response": response,
             })
-        except DataforSEOAPIError as e:
+        except (DataforSEOAPIError, BudgetExceededError) as e:
             print(f"API error querying '{query}': {e}")
             results.append({
                 "query": query,
