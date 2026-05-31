@@ -25,6 +25,14 @@ class Database:
         schema_path = Path(__file__).with_name("schema.sql")
         with self.connect() as connection:
             connection.executescript(schema_path.read_text(encoding="utf-8"))
+            self._migrate_existing(connection)
+
+    def _migrate_existing(self, connection: sqlite3.Connection) -> None:
+        api_cache_columns = {
+            row["name"] for row in connection.execute("PRAGMA table_info(api_cache)").fetchall()
+        }
+        if "experiment_id" not in api_cache_columns:
+            connection.execute("ALTER TABLE api_cache ADD COLUMN experiment_id TEXT")
 
 
 def database_from_env() -> Database:

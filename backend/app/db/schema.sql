@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS variants (
 
 CREATE TABLE IF NOT EXISTS api_cache (
   cache_key TEXT PRIMARY KEY,
+  experiment_id TEXT,
   endpoint TEXT NOT NULL,
   params_json TEXT NOT NULL,
   response_json TEXT NOT NULL,
@@ -57,4 +58,6 @@ CREATE TABLE IF NOT EXISTS query_budget (
 CREATE INDEX IF NOT EXISTS idx_experiments_state ON experiments(state);
 CREATE INDEX IF NOT EXISTS idx_variants_experiment ON variants(experiment_id);
 CREATE INDEX IF NOT EXISTS idx_api_cache_expires_at ON api_cache(expires_at);
+CREATE INDEX IF NOT EXISTS idx_api_cache_experiment ON api_cache(experiment_id);
+CREATE INDEX IF NOT EXISTS idx_api_cache_endpoint ON api_cache(endpoint);
 CREATE INDEX IF NOT EXISTS idx_query_budget_experiment ON query_budget(experiment_id);
