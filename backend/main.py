@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,14 +44,14 @@ app.add_middleware(
 
 
 class SERPQueryRequest(BaseModel):
-    experiment_id: str = Field(min_length=1)
+    experiment_id: str = Field(min_length=1, pattern=r"^\d{3}-[a-z0-9-]+$")
     keyword: str = Field(min_length=1)
     location_code: int | None = None
     language_code: str | None = None
-    device: str = "desktop"
+    device: Literal["desktop", "mobile"] = "desktop"
     force_fresh: bool = False
     control_query: bool = False
-    endpoint: str = "serp"
+    endpoint: Literal["serp", "ai_overview"] = "serp"
 
 
 class CacheInvalidateRequest(BaseModel):
