@@ -13,12 +13,13 @@ Environment:
     DATABASE_URL: SQLite URL (default: sqlite:///data/experiments.db)
 """
 
+import asyncio
 import json
 import sys
 from pathlib import Path
 
 # Add backend to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent / "backend"))
 
 from app.dataforseo import ApiCache, DataforSEOClient, DataforSEOConfig, QueryBudget
 from app.dataforseo.budget import BudgetExceededError
@@ -106,13 +107,13 @@ def generate_variants() -> dict[str, Path]:
     return variants
 
 
-def collect_ai_overview_data(client: DataforSEOClient) -> list[dict]:
+async def collect_ai_overview_data(client: DataforSEOClient) -> list[dict]:
     results = []
 
     for query in TEST_QUERIES:
         print(f"Querying: {query}")
         try:
-            response = client.query_ai_overview(keyword=query, experiment_id=EXPERIMENT_ID)
+            response = await client.query_ai_overview(keyword=query, experiment_id=EXPERIMENT_ID)
             results.append({
                 "query": query,
                 "citations": _extract_citations(response),
@@ -195,7 +196,7 @@ def save_results(results: list[dict], analysis: dict) -> None:
     print(f"Saved analysis to {DATA_DIR / 'analysis.json'}")
 
 
-def main() -> None:
+async def main() -> None:
     print(f"=== Experiment {EXPERIMENT_ID} ===")
     print("Content Structure vs AI Overview Citations\n")
 
@@ -220,7 +221,7 @@ def main() -> None:
     )
     client = DataforSEOClient(config, cache=cache, budget=budget)
 
-    results = collect_ai_overview_data(client)
+    results = await collect_ai_overview_data(client)
     print(f"\nCollected data for {len(results)} queries\n")
 
     print("Step 3: Analyzing results...")
@@ -242,4 +243,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
