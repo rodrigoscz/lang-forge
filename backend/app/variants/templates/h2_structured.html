@@ -1,0 +1,20 @@
+<div class="variant variant-h2-structured" data-structure="h2-structured" data-query="{{ query_slug }}">
+  <h1>{{ title }}</h1>
+  <h2>{{ slots.heading }}</h2>
+  <p>{{ slots.intro }}</p>
+  <h3>Analysis</h3>
+  <p>{{ slots.body }}</p>
+  <h3>Key points</h3>
+  <ul>
+    {% for point in slots.key_points %}<li>{{ point }}</li>{% endfor %}
+  </ul>
+  <h3>Questions</h3>
+  {% for item in slots.faq %}
+  <p>{{ item.question }}</p>
+  <p>{{ item.answer }}</p>
+  {% endfor %}
+  <h3>Process</h3>
+  <ol>
+    {% for step in slots.how_to_steps %}<li>{{ step }}</li>{% endfor %}
+  </ol>
+</div>

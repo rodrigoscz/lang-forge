@@ -1,0 +1,34 @@
+<article class="variant variant-semantic" data-structure="semantic" data-query="{{ query_slug }}">
+  <nav aria-label="Variant context"></nav>
+  <header>
+    <h1>{{ title }}</h1>
+  </header>
+  <section aria-labelledby="variant-heading">
+    <h2 id="variant-heading">{{ slots.heading }}</h2>
+    <p>{{ slots.intro }}</p>
+  </section>
+  <section aria-labelledby="variant-analysis">
+    <h3 id="variant-analysis">Analysis</h3>
+    <p>{{ slots.body }}</p>
+  </section>
+  <section aria-labelledby="variant-key-points">
+    <h3 id="variant-key-points">Key points</h3>
+    <ul>
+      {% for point in slots.key_points %}<li>{{ point }}</li>{% endfor %}
+    </ul>
+  </section>
+  <section aria-labelledby="variant-questions">
+    <h3 id="variant-questions">Questions</h3>
+    {% for item in slots.faq %}
+    <p>{{ item.question }}</p>
+    <p>{{ item.answer }}</p>
+    {% endfor %}
+  </section>
+  <section aria-labelledby="variant-process">
+    <h3 id="variant-process">Process</h3>
+    <ol>
+      {% for step in slots.how_to_steps %}<li>{{ step }}</li>{% endfor %}
+    </ol>
+  </section>
+  <aside aria-label="Experiment metadata"></aside>
+</article>
