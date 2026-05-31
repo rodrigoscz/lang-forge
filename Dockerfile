@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js for Astro build
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && npm install -g pnpm
 
@@ -29,14 +29,14 @@ COPY experiments/ ./experiments/
 COPY data/ ./data/
 
 # Create outputs directory
-RUN mkdir -p outputs
+RUN mkdir -p outputs frontend/dist/_astro
 
 # Set environment variables
-ENV PYTHONPATH=/app/backend
+ENV PYTHONPATH=/app:/app/backend
 ENV PYTHONUNBUFFERED=1
 
 # Expose port
 EXPOSE 8000
 
 # Run the application
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
