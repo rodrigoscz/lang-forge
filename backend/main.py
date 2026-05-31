@@ -5,6 +5,8 @@ from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.dataforseo import ApiCache, DataforSEOClient, DataforSEOConfig, QueryBudget
@@ -151,3 +153,25 @@ def _dataforseo_client(database: Database | None = None) -> DataforSEOClient:
             per_experiment_limit=config.per_experiment_limit,
         ),
     )
+
+
+# Serve Astro frontend (must be after API routes)
+_frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+if _frontend_dist.exists():
+    app.mount(
+        "/_astro",
+        StaticFiles(directory=_frontend_dist / "_astro"),
+        name="astro-assets",
+    )
+    
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        # Try to serve exact file first
+        file_path = _frontend_dist / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        # Fallback to index.html for SPA routing
+        index_path = _frontend_dist / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        raise HTTPException(status_code=404, detail="Frontend not built")

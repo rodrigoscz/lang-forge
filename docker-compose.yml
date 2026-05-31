@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  lang-forge:
+    build: .
+    container_name: lang-forge
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+    environment:
+      - DATABASE_URL=sqlite:///data/lang-forge.db
+      - DATAFORSEO_LOGIN=${DATAFORSEO_LOGIN}
+      - DATAFORSEO_PASSWORD=${DATAFORSEO_PASSWORD}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
