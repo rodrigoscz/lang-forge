@@ -216,3 +216,134 @@ def test_rate_limiter_queues_requests_over_configured_rps() -> None:
         assert sleeps == [1.0]
 
     asyncio.run(run())
+
+
+def test_lock_eviction_when_max_locks_exceeded() -> None:
+    async def run() -> None:
+        client = DataforSEOClient(config(), http_client=FakeHTTPClient([]))  # type: ignore[arg-type]
+        client._max_locks = 3
+
+        for i in range(3):
+            client._locks[f"key-{i}"] = asyncio.Lock()
+
+        assert len(client._locks) == 3
+
+        client._locks["key-4"] = asyncio.Lock()
+        assert len(client._locks) == 4
+
+    asyncio.run(run())
+
+
+def test_lock_eviction_waits_when_all_locked() -> None:
+    async def run() -> None:
+        client = DataforSEOClient(config(), http_client=FakeHTTPClient([]))  # type: ignore[arg-type]
+        client._max_locks = 2
+
+        lock1 = asyncio.Lock()
+        lock2 = asyncio.Lock()
+        await lock1.acquire()
+        await lock2.acquire()
+
+        client._locks["key-0"] = lock1
+        client._locks["key-1"] = lock2
+
+        async def release_after_delay() -> None:
+            await asyncio.sleep(0.01)
+            lock1.release()
+
+        asyncio.create_task(release_after_delay())
+
+        if len(client._locks) >= client._max_locks:
+            evicted = False
+            for old_key in list(client._locks.keys()):
+                if not client._locks[old_key].locked():
+                    del client._locks[old_key]
+                    evicted = True
+                    break
+            if not evicted:
+                oldest_key = next(iter(client._locks))
+                await client._locks[oldest_key].acquire()
+                del client._locks[oldest_key]
+
+        assert len(client._locks) == 1
+
+    asyncio.run(run())
+
+
+def test_budget_lock_eviction_when_max_exceeded() -> None:
+    async def run() -> None:
+        client = DataforSEOClient(config(), http_client=FakeHTTPClient([]))  # type: ignore[arg-type]
+        client._max_budget_locks = 3
+
+        for i in range(3):
+            client._budget_locks[f"exp-{i}"] = asyncio.Lock()
+
+        assert len(client._budget_locks) == 3
+
+        client._budget_locks["exp-4"] = asyncio.Lock()
+        assert len(client._budget_locks) == 4
+
+    asyncio.run(run())
+
+
+def test_budget_exceeded_mid_batch_continues(tmp_path: Path) -> None:
+    async def run() -> None:
+        database = temp_database(tmp_path)
+        budget = QueryBudget(database, monthly_budget_cents=4, per_experiment_limit=2)
+        fake_http = FakeHTTPClient([
+            httpx.Response(200, json=dataforseo_payload()),
+            httpx.Response(200, json=dataforseo_payload()),
+            httpx.Response(200, json=dataforseo_payload()),
+        ])
+        client = DataforSEOClient(
+            config(),
+            cache=ApiCache(database),
+            budget=budget,
+            http_client=fake_http,  # type: ignore[arg-type]
+        )
+
+        results = []
+        for i in range(3):
+            try:
+                response = await client.query_serp(keyword=f"query-{i}", experiment_id="001-test")
+                results.append({"query": f"query-{i}", "success": True})
+            except (DataforSEOAPIError, BudgetExceededError) as e:
+                results.append({"query": f"query-{i}", "success": False, "error": str(e)})
+
+        assert len(results) == 3
+        assert results[0]["success"] is True
+        assert results[1]["success"] is True
+        assert results[2]["success"] is False
+        assert "limit" in results[2]["error"].lower()
+
+    asyncio.run(run())
+
+
+def test_budget_lock_released_during_api_call(tmp_path: Path) -> None:
+    async def run() -> None:
+        database = temp_database(tmp_path)
+        budget = QueryBudget(database, monthly_budget_cents=100, per_experiment_limit=50)
+        fake_http = FakeHTTPClient([
+            httpx.Response(200, json=dataforseo_payload()),
+            httpx.Response(200, json=dataforseo_payload()),
+        ])
+        client = DataforSEOClient(
+            config(),
+            cache=ApiCache(database),
+            budget=budget,
+            http_client=fake_http,  # type: ignore[arg-type]
+        )
+
+        async def query1() -> None:
+            await client.query_serp(keyword="query-1", experiment_id="001-test")
+
+        async def query2() -> None:
+            await asyncio.sleep(0.001)
+            await client.query_serp(keyword="query-2", experiment_id="001-test")
+
+        await asyncio.gather(query1(), query2())
+
+        status = budget.status("001-test")
+        assert status.query_count == 2
+
+    asyncio.run(run())
