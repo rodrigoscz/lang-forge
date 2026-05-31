@@ -176,4 +176,4 @@ class VariantGenerator:
                 },
             ],
         }
-        return json.dumps(schema, ensure_ascii=False)
+        return json.dumps(schema, ensure_ascii=False).replace("</", "<\\/")
