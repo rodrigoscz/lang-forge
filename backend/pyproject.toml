@@ -22,7 +22,7 @@ dependencies = [
 security = ["pip-audit==2.8.0"]
 
 [tool.setuptools]
-packages = ["app", "app.db", "app.experiments", "app.variants"]
+packages = ["app", "app.dataforseo", "app.db", "app.experiments", "app.variants"]
 
 [tool.setuptools.package-data]
 "app.variants" = ["templates/*.html"]
