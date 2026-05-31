@@ -91,7 +91,8 @@ class DataforSEOClient:
         self._http_client = http_client
         self._locks: OrderedDict[str, asyncio.Lock] = OrderedDict()
         self._max_locks = 1000
-        self._budget_locks: dict[str, asyncio.Lock] = {}
+        self._budget_locks: OrderedDict[str, asyncio.Lock] = OrderedDict()
+        self._max_budget_locks = 100
 
     async def close(self) -> None:
         if self._http_client is not None:
@@ -158,10 +159,16 @@ class DataforSEOClient:
         key = f"{endpoint}:{json.dumps(params, sort_keys=True)}"
         if key not in self._locks:
             if len(self._locks) >= self._max_locks:
+                evicted = False
                 for old_key in list(self._locks.keys()):
                     if not self._locks[old_key].locked():
                         del self._locks[old_key]
+                        evicted = True
                         break
+                if not evicted:
+                    oldest_key = next(iter(self._locks))
+                    await self._locks[oldest_key].acquire()
+                    del self._locks[oldest_key]
             self._locks[key] = asyncio.Lock()
         self._locks.move_to_end(key)
         async with self._locks[key]:
@@ -175,10 +182,23 @@ class DataforSEOClient:
             if self.budget is not None:
                 exp_key = experiment_id or "global"
                 if exp_key not in self._budget_locks:
+                    if len(self._budget_locks) >= self._max_budget_locks:
+                        evicted = False
+                        for old_key in list(self._budget_locks.keys()):
+                            if not self._budget_locks[old_key].locked():
+                                del self._budget_locks[old_key]
+                                evicted = True
+                                break
+                        if not evicted:
+                            oldest_key = next(iter(self._budget_locks))
+                            await self._budget_locks[oldest_key].acquire()
+                            del self._budget_locks[oldest_key]
                     self._budget_locks[exp_key] = asyncio.Lock()
+                self._budget_locks.move_to_end(exp_key)
                 async with self._budget_locks[exp_key]:
                     await asyncio.to_thread(self.budget.check, experiment_id, estimated_cost_cents)
-                    raw = await self._post_with_retry(endpoint, [params])
+                raw = await self._post_with_retry(endpoint, [params])
+                async with self._budget_locks[exp_key]:
                     await asyncio.to_thread(self.budget.record, experiment_id, estimated_cost_cents)
             else:
                 raw = await self._post_with_retry(endpoint, [params])
