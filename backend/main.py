@@ -18,7 +18,10 @@ async def lifespan(app: FastAPI):
     database = database_from_env()
     database.initialize()
     app.state.database = database
+    client = _dataforseo_client(database)
+    app.state.dataforseo_client = client
     yield
+    await client.close()
 
 
 app = FastAPI(
@@ -79,7 +82,7 @@ def health() -> dict[str, str]:
 @app.post("/api/serp/query")
 async def query_serp(request: SERPQueryRequest) -> dict[str, Any]:
     try:
-        client = _dataforseo_client()
+        client: DataforSEOClient = app.state.dataforseo_client
         if request.endpoint == "ai_overview":
             response = await client.query_ai_overview(
                 keyword=request.keyword,
@@ -99,7 +102,6 @@ async def query_serp(request: SERPQueryRequest) -> dict[str, Any]:
                 force_fresh=request.force_fresh,
                 control_query=request.control_query,
             )
-        await client.close()
         return response.model_dump(mode="json")
     except DataforSEOConfigError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -137,13 +139,14 @@ def _query_budget() -> QueryBudget:
     )
 
 
-def _dataforseo_client() -> DataforSEOClient:
+def _dataforseo_client(database: Database | None = None) -> DataforSEOClient:
+    db = database or _database()
     config = DataforSEOConfig.from_env()
     return DataforSEOClient(
         config,
-        cache=ApiCache(_database()),
+        cache=ApiCache(db),
         budget=QueryBudget(
-            _database(),
+            db,
             monthly_budget_cents=config.monthly_budget_cents,
             per_experiment_limit=config.per_experiment_limit,
         ),
