@@ -2,10 +2,12 @@
 
 import os
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from app.viz import render_mermaid, create_chart, create_social_card
+from app.viz.cards import create_experiment_card
 
 
 class TestMermaid:
@@ -163,3 +165,24 @@ class TestSocialCards:
             if "html2image" in str(e):
                 pytest.skip("html2image not installed")
             raise
+
+
+class TestExperimentCard:
+    """Tests for experiment card HTML generation."""
+
+    def test_create_experiment_card_escapes_html_and_returns_path(self, tmp_path: Path) -> None:
+        """Test that create_experiment_card builds HTML without UnboundLocalError."""
+        output = tmp_path / "exp_card.png"
+        with patch("app.viz.cards.create_social_card", return_value=output) as mock_card:
+            result = create_experiment_card(
+                experiment_id="001-test",
+                title="Test <Title>",
+                key_finding="Finding & result",
+                output_path=output,
+            )
+            assert result == output
+            mock_card.assert_called_once()
+            html_arg = mock_card.call_args[0][0]
+            assert "001-test" in html_arg
+            assert "&lt;Title&gt;" in html_arg
+            assert "&amp;" in html_arg
