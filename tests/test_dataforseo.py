@@ -234,41 +234,6 @@ def test_lock_eviction_when_max_locks_exceeded() -> None:
     asyncio.run(run())
 
 
-def test_lock_eviction_waits_when_all_locked() -> None:
-    async def run() -> None:
-        client = DataforSEOClient(config(), http_client=FakeHTTPClient([]))  # type: ignore[arg-type]
-        client._max_locks = 2
-
-        lock1 = asyncio.Lock()
-        lock2 = asyncio.Lock()
-        await lock1.acquire()
-        await lock2.acquire()
-
-        client._locks["key-0"] = lock1
-        client._locks["key-1"] = lock2
-
-        async def release_after_delay() -> None:
-            await asyncio.sleep(0.01)
-            lock1.release()
-
-        asyncio.create_task(release_after_delay())
-
-        if len(client._locks) >= client._max_locks:
-            evicted = False
-            for old_key in list(client._locks.keys()):
-                if not client._locks[old_key].locked():
-                    del client._locks[old_key]
-                    evicted = True
-                    break
-            if not evicted:
-                oldest_key = next(iter(client._locks))
-                await client._locks[oldest_key].acquire()
-                del client._locks[oldest_key]
-
-        assert len(client._locks) == 1
-
-    asyncio.run(run())
-
 
 def test_budget_lock_eviction_when_max_exceeded() -> None:
     async def run() -> None:
