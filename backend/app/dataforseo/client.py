@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from datetime import UTC, datetime
@@ -150,21 +151,21 @@ class DataforSEOClient:
         force_fresh: bool,
     ) -> dict[str, Any]:
         if self.cache is not None and not force_fresh:
-            cached = self.cache.get(endpoint, params)
+            cached = await asyncio.to_thread(self.cache.get, endpoint, params)
             if cached is not None:
                 cached["_from_cache"] = True
                 return cached
 
         estimated_cost_cents = self.config.default_cost_cents
         if self.budget is not None:
-            self.budget.check(experiment_id, estimated_cost_cents)
+            await asyncio.to_thread(self.budget.check, experiment_id, estimated_cost_cents)
 
         raw = await self._post_with_retry(endpoint, [params])
 
         if self.budget is not None:
-            self.budget.record(experiment_id, estimated_cost_cents)
+            await asyncio.to_thread(self.budget.record, experiment_id, estimated_cost_cents)
         if self.cache is not None:
-            self.cache.set(endpoint, params, raw, experiment_id=experiment_id)
+            await asyncio.to_thread(self.cache.set, endpoint, params, raw, experiment_id=experiment_id)
         return raw
 
     async def _post_with_retry(self, endpoint: str, payload: list[dict[str, Any]]) -> dict[str, Any]:

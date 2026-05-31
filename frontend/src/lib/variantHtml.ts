@@ -42,7 +42,7 @@ function schemaJson(experimentId: string, query: QueryContent, structureType: St
         step: query.howToSteps.map((step, index) => ({ '@type': 'HowToStep', position: index + 1, text: step })),
       },
     ],
-  });
+  }).replace(/<\//g, '<\\/');
 }
 
 export function renderVariantHtml(experimentId: string, query: QueryContent, structureType: StructureType): string {
@@ -57,7 +57,7 @@ export function renderVariantHtml(experimentId: string, query: QueryContent, str
     return `<div class="variant variant-h2-structured"><h1>${escapeHtml(query.title)}</h1><h2>${escapeHtml(query.heading)}</h2><p>${escapeHtml(query.intro)}</p><h3>Analysis</h3><p>${escapeHtml(query.body)}</p><h3>Key points</h3>${keyPoints}<h3>Questions</h3>${faq(query)}<h3>Process</h3>${steps}</div>`;
   }
 
-  const semanticHtml = `<article class="variant variant-${structureType}"><nav aria-label="Variant context"></nav><header><h1>${escapeHtml(query.title)}</h1></header><section><h2>${escapeHtml(query.heading)}</h2><p>${escapeHtml(query.intro)}</p></section><section><h3>Analysis</h3><p>${escapeHtml(query.body)}</p></section><section><h3>Key points</h3>${keyPoints}</section><section><h3>Questions</h3>${faq(query)}</section><section><h3>Process</h3>${steps}</section><aside aria-label="Experiment metadata"></aside>`;
+  const semanticHtml = `<article class="variant variant-${structureType}" data-structure="${structureType}" data-query="${query.slug}"><nav aria-label="Variant context"></nav><header><h1>${escapeHtml(query.title)}</h1></header><section aria-labelledby="variant-heading"><h2 id="variant-heading">${escapeHtml(query.heading)}</h2><p>${escapeHtml(query.intro)}</p></section><section aria-labelledby="variant-analysis"><h3 id="variant-analysis">Analysis</h3><p>${escapeHtml(query.body)}</p></section><section aria-labelledby="variant-key-points"><h3 id="variant-key-points">Key points</h3>${keyPoints}</section><section aria-labelledby="variant-questions"><h3 id="variant-questions">Questions</h3>${faq(query)}</section><section aria-labelledby="variant-process"><h3 id="variant-process">Process</h3>${steps}</section><aside aria-label="Experiment metadata"></aside>`;
 
   if (structureType === 'schema-enriched') {
     return `${semanticHtml}<script type="application/ld+json">${schemaJson(experimentId, query, structureType)}</script></article>`;
