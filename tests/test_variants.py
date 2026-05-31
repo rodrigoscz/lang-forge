@@ -95,6 +95,39 @@ def test_structure_specific_elements(variant_input: VariantInput, structure_type
         assert {"Article", "FAQPage", "HowTo"}.issubset(schema_types)
 
 
+def test_json_ld_prevents_script_injection() -> None:
+    xss_payload = '</script><script>alert(1)</script>'
+    variant_input = VariantInput(
+        experiment_id="001-xss",
+        query_slug="xss-test",
+        title=f"Test {xss_payload}",
+        content_slots={
+            "heading": f"XSS {xss_payload}",
+            "intro": f"Test {xss_payload}",
+            "body": "Safe body",
+            "key_points": ["Safe point"],
+            "faq": [{"question": f"Q {xss_payload}", "answer": f"A {xss_payload}"}],
+            "how_to_steps": [f"Step {xss_payload}"],
+        },
+    )
+    variant = VariantGenerator().render_variant(variant_input, StructureType.SCHEMA_ENRICHED)
+
+    script_tag = re.search(
+        r'<script type="application/ld\+json">(.*?)</script>',
+        variant.html,
+        re.S,
+    )
+    assert script_tag is not None
+    raw_json = script_tag.group(1)
+
+    assert '</script>' not in raw_json
+    assert '<\\/script>' in raw_json
+
+    unescaped = raw_json.replace('<\\/', '</')
+    parsed = json.loads(unescaped)
+    assert parsed["@context"] == "https://schema.org"
+
+
 def test_missing_required_slots_are_reported() -> None:
     with pytest.raises(ValueError, match="how_to_steps"):
         VariantInput(
