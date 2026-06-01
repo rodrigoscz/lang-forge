@@ -1,0 +1,35 @@
+/* theme.css: tokens de la suite "todo es lenguaje" (rodrigoscz).
+   Portable: copiá este archivo a cada repo y reusá las custom properties.
+   Soporta tema automático (prefers-color-scheme) + override manual con [data-theme]. */
+:root {
+  --arena: #e7cda6; /* fondo */
+  --ink: #2e2117; /* texto */
+  --brown: #7a5230; /* secundario */
+  --terra: #c46a2b; /* acento / CTA / links */
+  --paper: #f4e6cf; /* superficie */
+  --line: #d9bd92; /* bordes */
+  --field: #ffffff; /* fondo de inputs */
+  --codebg: rgba(46, 33, 23, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --arena: #0d1117;
+    --ink: #e7cda6;
+    --brown: #c9a978;
+    --terra: #c46a2b;
+    --paper: #161b22;
+    --line: #3a2f22;
+    --field: #0b0f14;
+    --codebg: rgba(231, 205, 166, 0.1);
+  }
+}
+:root[data-theme="dark"] {
+  --arena: #0d1117;
+  --ink: #e7cda6;
+  --brown: #c9a978;
+  --terra: #c46a2b;
+  --paper: #161b22;
+  --line: #3a2f22;
+  --field: #0b0f14;
+  --codebg: rgba(231, 205, 166, 0.1);
+}

@@ -11,7 +11,7 @@ const { experiment, query, structureType } = Astro.props;
 const variantHtml = renderVariantHtml(experiment.id, query, structureType);
 ---
 
-<BaseLayout title={`${query.title} — ${structureType}`} description={`${structureType} variant for ${query.title}.`}>
+<BaseLayout title={`${query.title} · ${structureType}`} description={`${structureType} variant for ${query.title}.`}>
   <section class="hero">
     <p class="eyebrow">{experiment.id} · {structureType}</p>
     <h1>{query.title}</h1>

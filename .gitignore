@@ -32,3 +32,7 @@ outputs/**/*.svg
 .DS_Store
 .idea/
 .vscode/
+
+# tooling interno (no publicar)
+.atl/
+.DS_Store
